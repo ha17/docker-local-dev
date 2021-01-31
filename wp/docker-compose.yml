@@ -1,68 +1,69 @@
 version: '3.7'
 
 networks:
-  wp-elementor-test:
+  wp-base:
 
 services:
   wordpress:
     image: wordpress
     restart: unless-stopped
+    depends_on: 
+      - mysql
     ports:
       - 8282:80
     environment:
-      WORDPRESS_DB_HOST: db
-      WORDPRESS_DB_USER: exampleuser
-      WORDPRESS_DB_PASSWORD: examplepass
-      WORDPRESS_DB_NAME: exampledb
+      #WORDPRESS_DB_HOST: mysql:5306
+      WORDPRESS_DB_USER: mydbusername
+      WORDPRESS_DB_PASSWORD: secret
+      WORDPRESS_DB_NAME:  mydb
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
     volumes:
       - ./src:/var/www/html
     networks:
-      - wp-elementor-test
+      - wp-base
 
-  db:
-    image: mysql:5.7
+  mysql:
+    image: mysql
     restart: unless-stopped
+    tty: true
     environment:
-      MYSQL_DATABASE: exampledb
-      MYSQL_USER: exampleuser
-      MYSQL_PASSWORD: examplepass
-      MYSQL_RANDOM_ROOT_PASSWORD: '1'
+      MYSQL_DATABASE: mydb
+      MYSQL_USER: mydbusername
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: secret
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    ports:
+      - "4306:3306"
     volumes:
-      - ./db:/var/lib/mysql
+      - ./mysql:/var/lib/mysql
     networks:
-      - wp-elementor-test
-
-  # wpcli:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   environment:
-  #     WORDPRESS_DB_HOST: db
-  #     WORDPRESS_DB_USER: exampleuser
-  #     WORDPRESS_DB_PASSWORD: examplepass
-  #     WORDPRESS_DB_NAME: exampledb
-  #   volumes:
-  #     - ./src:/var/www/html
-  #   working_dir: /var/www/html
-  #   networks:
-  #     - wp-elementor-test
-
+      - wp-base
 
   wpcli:
     image: wordpress:cli
-    # environment:
-    #   WORDPRESS_DB_HOST: db
-    #   WORDPRESS_DB_USER: exampleuser
-    #   WORDPRESS_DB_PASSWORD: examplepass
-    #   WORDPRESS_DB_NAME: exampledb
     volumes:
       - ./src:/var/www/html
     working_dir: /var/www/html
-    command: 
-      - /bin/sh -c "wp core update --path=/var/www/html"
-      - /bin/sh -c "wp plugin install elementor --activate --path=/var/www/html"
-      - /bin/sh -c "wp plugin install envato-elements --activate --path=/var/www/html"
-      - /bin/sh -c "wp plugin install header-footer-elementor --activate --path=/var/www/html"
-      - /bin/sh -c "wp theme install hello-elementor --activate --path=/var/www/html"
     networks:
-      - wp-elementor-test
+      - wp-base
+
+ dbBackup:
+    image: fradelg/mysql-cron-backup
+    depends_on:
+      - mysql
+    restart: always
+    volumes:
+      - ./db-backup:/backup
+    environment:
+      - MYSQL_USER=root
+      - MYSQL_PASS=secret
+      - MYSQL_DB=mydb
+      - CRON_TIME=0 0 * * *
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - TIMEOUT=10s
+      - INIT_BACKUP=1
+    networks:
+      - wp-base
