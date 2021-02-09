@@ -6,7 +6,6 @@ networks:
 services:
   nginx:
     image: nginx
-    container_name: nginx
     ports:
       - "8088:80"
     volumes:
@@ -20,28 +19,26 @@ services:
 
   mysql:
     image: mysql
-    container_name: mysql
     restart: unless-stopped
     tty: true
     ports:
       - "4306:3306"
     volumes:
       - ./mysql:/var/lib/mysql
-    environment: 
+    environment:
       MYSQL_DATABASE: discgolfstats
       MYSQL_USER: discgolfstats
       MYSQL_PASSWORD: secret
-      MYSQL_ROOT_PASSWORD: secret 
+      MYSQL_ROOT_PASSWORD: secret
       SERVICE_TAGS: dev
       SERVICE_NAME: mysql
     networks:
       - laravel
 
   php:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
-    container_name: php
     volumes:
       - ./src:/var/www/html
     ports:
@@ -51,7 +48,6 @@ services:
 
   composer:
     image: composer:latest
-    container_name: composer
     volumes:
       - ./src:/var/www/html
     working_dir: /var/www/html
@@ -60,7 +56,6 @@ services:
 
   npm:
     image: node:latest
-    container_name: npm
     volumes:
       - ./src:/var/www/html
     working_dir: /var/www/html
@@ -69,15 +64,49 @@ services:
       - laravel
 
   artisan:
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
-    container_name: artisan
     volumes:
       - ./src:/var/www/html
-    depends_on: 
+    depends_on:
       - mysql
     working_dir: /var/www/html
     entrypoint: ['/var/www/html/artisan']
     networks:
       - laravel
+
+
+
+  phymyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    depends_on:
+      - mysql
+    ports:
+      - "8089:80"
+    environment:
+      PMA_HOST: mysql
+      MYSQL_ROOT_PASSWORD: secret
+    networks:
+      - laravel
+
+  dbBackup:
+    image: fradelg/mysql-cron-backup
+    depends_on:
+      - mysql
+    restart: always
+    volumes:
+      - ./db-backup:/backup
+    environment:
+      - MYSQL_USER=root
+      - MYSQL_PASS=secret
+      - MYSQL_DB=discgolfstats
+      - CRON_TIME=0 0 * * *
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - TIMEOUT=10s
+      - INIT_BACKUP=1
+    networks:
+      - laravel
+
