@@ -1,0 +1,36 @@
+version: '3.7'
+
+networks:
+  laravel:
+
+services:
+  mysql:
+    image: mysql
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: discgolfstats
+      MYSQL_USER: discgolfstats
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: secret
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    networks:
+      - laravel
+
+  phymyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    depends_on:
+      - mysql
+    ports:
+      - "8089:80"
+    environment:
+      PMA_HOST: mysql
+      MYSQL_ROOT_PASSWORD: secret
+    networks:
+      - laravel
