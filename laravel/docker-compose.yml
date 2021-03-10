@@ -91,7 +91,7 @@ services:
     networks:
       - laravel
 
-  dbBackup:
+  dbbackup:
     image: fradelg/mysql-cron-backup
     depends_on:
       - mysql
